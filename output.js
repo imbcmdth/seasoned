@@ -7,19 +7,22 @@ export const outputHeader = () => {
     process.stdout.write(`"${columnLast[0]}"\n`);
 };
 
-const writeValue = (lineMeta, prop, eol = ',') => {
+const writeValue = (lineMeta, prop, sep = ',') => {
     if (prop.startsWith('[') && prop.endsWith(']')) {
         const value = lineMeta.getCode(prop);
 
-        return process.stdout.write(`${value}${eol}`);
+        return process.stdout.write(`${value}${sep}`);
     }
 
     const value = lineMeta.getProp(prop);
 
-    if (typeof value !== 'number' && !value) {
-        return process.stdout.write(`${eol}`);
+    if (typeof value === 'number') {
+        return process.stdout.write(`${value}${sep}`);
     }
-    process.stdout.write(`"${value}"${eol}`);
+    if (!value) {
+        return process.stdout.write(`${sep}`);
+    }
+    process.stdout.write(`"${value}"${sep}`);
 };
 
 export const outputLine = (lineMeta) => {

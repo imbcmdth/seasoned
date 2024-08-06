@@ -8,7 +8,7 @@ const columnsSpecification = [
     ['Raw Line',       'rawLine'],
     ['Participant Id', 'fileNamePart_0'],
     ['Year',           'fileNamePart_1'],
-    ['Language',       'Language'],
+    ['Language',       'fileNamePart_2'],
     ['Coder',          'fileNamePart_4'],
     ['[SI-X]',         '[SI-X]'],
     ['[SI-1]',         '[SI-1]'],
