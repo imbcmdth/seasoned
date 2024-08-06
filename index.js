@@ -41,8 +41,9 @@ const buildCSV = (listOfFiles) => {
     listOfFiles.forEach((fileName) => {
         console.warn(`Processing file: ${fileName}`);
         const fileMeta = new FileMeta(fileName);
+        let utteranceRow = 0;
 
-        getLinesFromFile(fileName).forEach((line, rowNumber) => {
+        getLinesFromFile(fileName).forEach((line) => {
             if (isHeaderLine(line)) {
                 const headerData = line.slice(2);
                 const [headerName, headerValue] = headerData.split(': ');
@@ -51,7 +52,7 @@ const buildCSV = (listOfFiles) => {
             }
 
             if (isChildLine(line)) {
-                const lineMeta = new LineMeta(fileMeta, rowNumber, line);
+                const lineMeta = new LineMeta(fileMeta, utteranceRow++, line);
                 const lineCodes = countCodes(line, lineMeta);
                 return outputLine(lineMeta);
             }
