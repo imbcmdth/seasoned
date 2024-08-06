@@ -1,10 +1,11 @@
 import FileMeta from './file-meta.js';
 
 export default class LineMeta extends FileMeta {
-    constructor(fileName, rowNumber, rawLine) {
-        super(fileName);
+    constructor(fileMeta, rowNumber, rawLine) {
+        super(fileMeta.absoluteFileName);
         this.rowNumber = rowNumber;
         this.rawLine = rawLine;
+        this.header = Object.create(fileMeta.header);
         this.codes = {};
     }
 

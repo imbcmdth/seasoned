@@ -6,8 +6,9 @@ import FileMeta from './file-meta.js';
 import {outputHeader, outputLine} from './output.js';
 
 const isChildLine = (line) => line.toLowerCase().trim().startsWith('c ');
+const isHeaderLine = (line) => line.toLowerCase().trim().startsWith('+ ');
 
-const getChildLinesFromFile = (absoluteFilePath) => {
+const getLinesFromFile = (absoluteFilePath) => {
     try {
         const data = fs.readFileSync(absoluteFilePath).toString();
 
@@ -15,9 +16,7 @@ const getChildLinesFromFile = (absoluteFilePath) => {
         const cleanData = data.replace(/\u202f/g, ' ');
 
         const lines = cleanData.split(/\r?\n/);
-        const onlyChildLines = lines.filter(isChildLine);
-
-        return onlyChildLines;
+        return lines;
     } catch(e) {
         console.error(`ERROR: Reading '${absoluteFilePath}' failed!`);
         return [];
@@ -43,16 +42,21 @@ const buildCSV = (listOfFiles) => {
         console.warn(`Processing file: ${fileName}`);
         const fileMeta = new FileMeta(fileName);
 
-        if (!fileMeta.isFinal) {
-            console.warn(`WARNING: Excluding non-FINAL file found in input set: ${fileName}`);
-            return;
-        }
+        getLinesFromFile(fileName).forEach((line, rowNumber) => {
+            if (isHeaderLine(line)) {
+                const headerData = line.slice(2);
+                const [headerName, headerValue] = headerData.split(': ');
 
-        getChildLinesFromFile(fileName).forEach((line, rowNumber) => {
-            const lineMeta = new LineMeta(fileName, rowNumber, line);
-            const lineCodes = countCodes(line, lineMeta);
-            outputLine(lineMeta);
+                return fileMeta.setHeader(headerName, headerValue);
+            }
+
+            if (isChildLine(line)) {
+                const lineMeta = new LineMeta(fileMeta, rowNumber, line);
+                const lineCodes = countCodes(line, lineMeta);
+                return outputLine(lineMeta);
+            }
         });
+        console.warn(fileMeta);
     });
     console.warn(`Done!`);
 };

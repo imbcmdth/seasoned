@@ -4,13 +4,27 @@ export default class FileMeta {
     constructor(fileName) {
         const extension = path.extname(fileName);
         const justTheName = path.basename(fileName, extension);
-        const parts = justTheName.toUpperCase().split('_');
+        const parts = justTheName.toUpperCase().split(/[_-]+/) ?? [];
 
+        this.absoluteFileName = fileName;
         this.fileName = justTheName;
-        this.participantId = parts[0];
-        this.year = parts[1];
-        this.language = parts[2];
-        this.isFinal = (parts[3] === 'FINAL');
-        this.coder = parts[4];
+
+        parts.forEach((part, index) => {
+            this[`fileNamePart_${index}`] = part;
+        });
+
+        this.header = {};
+    }
+
+    getProp(prop) {
+        return this[prop] ?? this.header[prop];
+    }
+
+    setHeader(prop, value) {
+        if (typeof value === 'string') {
+            this.header[prop] = value.trim();
+            return;
+        }
+        this.header[prop] = value;
     }
 }

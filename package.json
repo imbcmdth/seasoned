@@ -1,5 +1,5 @@
 {
-  "name": "seasoning",
+  "name": "seasoned",
   "version": "1.0.0",
   "bin": "index.js",
   "main": "index.js",
@@ -7,7 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "type": "module",
-  "author": "",
+  "author": "Jon-Carlos Rivera <jon.carlos.rivera@gmail.com>",
   "license": "ISC",
-  "description": ""
+  "description": "Add a bit of seasoning to your SALT files! Converts a one or more of SALT files into a single CSV with a row for each utterance where the columns count the number times a code appears in each utterance."
 }
