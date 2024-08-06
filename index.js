@@ -3,21 +3,25 @@ import fs from 'fs';
 import path from 'path';
 import LineMeta from './line-meta.js';
 import FileMeta from './file-meta.js';
-import columnSpec from './column-spec.js';
 import {outputHeader, outputLine} from './output.js';
 
 const isChildLine = (line) => line.toLowerCase().trim().startsWith('c ');
 
 const getChildLinesFromFile = (absoluteFilePath) => {
-    const data = fs.readFileSync(absoluteFilePath).toString();
+    try {
+        const data = fs.readFileSync(absoluteFilePath).toString();
 
-    // Replace any "Narrow No-Break Space" characters with a regular space
-    const cleanData = data.replace(/\u202f/g, ' ');
+        // Replace any "Narrow No-Break Space" characters with a regular space
+        const cleanData = data.replace(/\u202f/g, ' ');
 
-    const lines = cleanData.split(/\r?\n/);
-    const onlyChildLines = lines.filter(isChildLine);
+        const lines = cleanData.split(/\r?\n/);
+        const onlyChildLines = lines.filter(isChildLine);
 
-    return onlyChildLines;
+        return onlyChildLines;
+    } catch(e) {
+        console.error(`ERROR: Reading '${absoluteFilePath}' failed!`);
+        return [];
+    }
 };
 
 const countCodes = (line, lineMeta) => {
@@ -44,8 +48,7 @@ const buildCSV = (listOfFiles) => {
             return;
         }
 
-        const lines = getChildLinesFromFile(fileName);
-        lines.forEach((line, rowNumber) => {
+        getChildLinesFromFile(fileName).forEach((line, rowNumber) => {
             const lineMeta = new LineMeta(fileName, rowNumber, line);
             const lineCodes = countCodes(line, lineMeta);
             outputLine(lineMeta);
