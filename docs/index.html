@@ -1,0 +1,327 @@
+<html>
+<head>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jspreadsheet-ce/dist/jspreadsheet.min.css" type="text/css" />
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/jspreadsheet-ce/dist/index.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsuites/dist/jsuites.min.css" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/jsuites/dist/jsuites.min.js"></script>
+  <style>
+    label {
+      appearance: auto;
+      text-rendering: auto;
+      color: buttontext;
+      letter-spacing: normal;
+      word-spacing: normal;
+      line-height: normal;
+      text-transform: none;
+      text-indent: 0px;
+      text-shadow: none;
+      display: inline-block;
+      text-align: center;
+      align-items: flex-start;
+      cursor: default;
+      box-sizing: border-box;
+      background-color: buttonface;
+      margin: 0em;
+      padding-block: 1px;
+      padding-inline: 6px;
+      border-width: 1px;
+      border-style: outset;
+      border-color: buttonborder;
+      border-image: initial;
+      border-radius: 3px;
+    }
+    #file-preview>div {
+      margin-left: 10px;
+      margin-right: 10px;
+      margin-top: 4px;
+      margin-bottom: 4px;
+    }
+    .list-item {
+      position: relative;
+      border-bottom: 1px solid grey;
+    }
+    .delete-button {
+      position: absolute;
+      right: 0px;
+    }
+    #file-preview {
+      border: 1px solid black;
+      width: 600px;
+      padding-top: 10px;
+      padding-bottom: 10px;
+    }
+    #file-preview-empty {
+      color: darkred;
+    }
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>SALT to CSV Tool</h1>
+  <p>All processing takes place on your computer. No data EVER leaves your computer and NO server communications take place when using this tool!
+  <hr>
+  <input type="file" id="salt-files" name="salt-files" multiple accept=".slt,.txt">
+  <h2>Active Files</h2>
+  <label for="salt-files">Add SALT file(s)...</label>
+  <div id="file-preview">
+    <div id="file-preview-empty">No files currently loaded</div>
+  </div>
+  <hr>
+  <h2>Preview <button id="save-csv" disabled>Save CSV</button></h2>
+  <p>You can edit this spreadsheet before you "Save CSV" via the button above.</p>
+  <div id="spreadsheet"></div>
+
+  <script>
+    class Sheet {
+      constructor() {
+        this.files = [];
+        this.forceColumns = [];
+      }
+
+      addFile(file) {
+        this.files.push(new File(file));
+
+        return this.files.length - 1;
+      }
+
+      deleteFile(file) {
+        const fileIndex = this.files.findIndex(f => f.file === file);
+        if (fileIndex < 0) {
+          return;
+        }
+        this.files.splice(fileIndex, 1);
+      }
+
+      get length() {
+        return this.files.length;
+      }
+
+      async getHeaders() {
+        const allHeaders = await Promise.all(this.files.map(file => file.getHeaders()))
+        const sortedHeaders = [...this.forceColumns, ...allHeaders].flat().sort();
+        // dedupe
+        const dedupedHeaders = Array.from(new Set(sortedHeaders));
+        return dedupedHeaders;
+      }
+
+      async getData() {
+        const headers = await this.getHeaders();
+        const allData = await Promise.all(this.files.map(file => file.getData(headers)));
+
+        return allData;
+      }
+    }
+
+    class File {
+      constructor(file) {
+        this.file = file;
+        const ucFileName = file.name.toUpperCase();
+        const fileNameNoExtension = ucFileName.split('.')[0];
+        const parts = fileNameNoExtension.split(/[_-]+/) ?? [];
+        this.fileName = file.name;
+        this.saltHeaders = {
+          'File Name': file.name
+        };
+        parts.forEach((part, index) => {
+          this.saltHeaders[`File Name Part_${index}`] = part;
+        });
+        this.loaded = false;
+        this.utterances = [];
+      }
+
+      async load() {
+        if (this.loaded) {
+          return;
+        }
+        const data = await readFile(this.file);
+        const lines = getLinesFromData(data);
+
+        // Process headers
+        // lines.filter(isHeaderLine).forEach((line) => {
+        //   const headerData = line.slice(2);
+        //   const [headerName, headerValue] = headerData.split(': ');
+        //   if (headerValue) {
+        //     this.saltHeaders[headerName] = headerValue.trim();
+        //   }
+        // });
+
+        // Process utterances
+        this.utterances = lines.filter(isChildLine).map(line => new Utterance(line));
+        this.loaded = true;
+      }
+
+      async getHeaders() {
+        await this.load();
+        const allCodes = this.utterances.map(utterance => Object.keys(utterance.codes)).flat().sort();
+        const dedupedCodes = Array.from(new Set(allCodes));
+        const saltHeaders = Object.keys(this.saltHeaders).sort();
+
+        return ['Utterance Number', ...saltHeaders, ...dedupedCodes];
+      }
+
+      async getData(headers) {
+        await this.load();
+        const allCodes = this.utterances.map((utterance, index) => {
+          return headers.map(header => {
+            if (header in this.saltHeaders) {
+              return this.saltHeaders[header];
+            }
+            if (header in utterance.codes) {
+              return utterance.codes[header];
+            }
+            if (header === 'Utterance Number') {
+              return index;
+            }
+            if (isCode(header)) {
+              return 0;
+            }
+            return null;
+          });
+        });
+
+        return allCodes;
+      }
+    }
+
+    class Utterance {
+      constructor(rawLine) {
+        this.rawLine = rawLine;
+        this.isHeader = false;
+        this.codes = {};
+        this.countCodes();
+      }
+
+      countCodes() {
+        const codesMatch = this.rawLine.toUpperCase().match(/(\[[^\]\[]+)/g);
+
+        if (!codesMatch) {
+          return;
+        }
+
+        codesMatch.forEach((code) => {
+          code += ']';
+          if (this.codes[code]) {
+            this.codes[code]++;
+          } else {
+            this.codes[code] = 1;
+          }
+        });
+      }
+    }
+
+    const isChildLine = (line) => line.toLowerCase().trim().startsWith('c ');
+    const isHeaderLine = (line) => line.toLowerCase().trim().startsWith('+ ');
+    const isCode = (line) => line.toLowerCase().trim().startsWith('[') && line.toLowerCase().trim().endsWith(']');
+    const getLinesFromData = (data) => {
+      // Replace any "Narrow No-Break Space" characters with a regular space
+      const cleanData = data.replace(/\u202f/g, ' ');
+      const lines = cleanData.split(/\r?\n/);
+      return lines;
+    };
+
+    // -----
+
+    const sheet = new Sheet();
+    const fileInput = document.querySelector("#salt-files");
+    const filePreview = document.querySelector("#file-preview");
+    const filePreviewEmpty = document.querySelector('#file-preview-empty');
+    const saveCSV = document.querySelector("#save-csv");
+    window.table = null;
+    fileInput.style.display = 'none';
+    fileInput.addEventListener("change", addToFileDisplay);
+    saveCSV.onclick = () => {
+      if (table) {
+        table.download();
+      }
+    };
+
+    async function addToFileDisplay() {
+      const curFiles = fileInput.files;
+
+      if (curFiles.length === 0 && !sheet.length) {
+        filePreviewEmpty.classList.remove('hidden');
+      } else {
+        filePreviewEmpty.classList.add('hidden');
+
+        for (const file of curFiles) {
+          const index = sheet.addFile(file);
+
+          const listItem = document.createElement("div");
+          listItem.classList.add('list-item');
+          const deleteButton = document.createElement("button");
+          deleteButton.textContent = 'X';
+          deleteButton.classList.add('delete-button');
+
+          deleteButton.onclick = () => {
+            listItem.remove();
+            sheet.deleteFile(file);
+            updateSpreadsheet();
+
+            if (!sheet.length) {
+              filePreviewEmpty.classList.remove('hidden');
+            }
+          };
+
+          const span = document.createElement("span");
+          span.textContent = `${file.name} (${returnFileSize(
+            file.size,
+          )})`;
+          span.classList.add('file-name');
+          listItem.appendChild(span);
+          listItem.appendChild(deleteButton);
+          filePreview.appendChild(listItem);
+        }
+      }
+      updateSpreadsheet();
+    }
+
+    async function updateSpreadsheet() {
+      jspreadsheet.destroy(document.getElementById('spreadsheet'));
+      table = null;
+      const headers = await sheet.getHeaders();
+
+      if (!headers.length) {
+        saveCSV.disabled = true;
+        return;
+      }
+
+      saveCSV.disabled = false;
+
+      const data = (await sheet.getData()).flat();
+      const columns = headers.map(header => {
+        return {
+          title: header,
+          type: isCode(header) ? 'numeric' : 'text'
+        };
+      });
+
+      table = jspreadsheet(document.getElementById('spreadsheet'), {data, columns, csvFileName: 'salt-to-csv'});
+    }
+
+    function returnFileSize(number) {
+      if (number < 1e3) {
+        return `${number}B`;
+      } else if (number >= 1e3 && number < 1e6) {
+        return `${(number / 1e3).toFixed(1)}KB`;
+      }
+      return `${(number / 1e6).toFixed(1)}MB`;
+    }
+
+    function readFile(file) {
+      const reader = new FileReader();
+
+      return new Promise((resolve, reject) => {
+        reader.onload = (evt) => {
+          resolve(evt.target.result);
+        };
+        reader.onerror = (evt) => {
+          reject(evt);
+        };
+        reader.readAsText(file);
+      });
+    }
+    //const table = jspreadsheet(document.getElementById('spreadsheet'), {});
+  </script>
+</body>
