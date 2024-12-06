@@ -297,7 +297,7 @@
         };
       });
 
-      table = jspreadsheet(document.getElementById('spreadsheet'), {data, columns, csvFileName: 'salt-to-csv'});
+      table = jspreadsheet(document.getElementById('spreadsheet'), {data, columns, csvFileName: 'salt-to-csv', includeHeadersOnDownload: true});
     }
 
     function returnFileSize(number) {
