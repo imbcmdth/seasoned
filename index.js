@@ -4,6 +4,7 @@ import path from 'path';
 import LineMeta from './line-meta.js';
 import FileMeta from './file-meta.js';
 import {outputHeader, outputLine} from './output.js';
+import {globSync} from 'glob';
 
 const isChildLine = (line) => line.toLowerCase().trim().startsWith('c ');
 const isHeaderLine = (line) => line.toLowerCase().trim().startsWith('+ ');
@@ -18,7 +19,7 @@ const getLinesFromFile = (absoluteFilePath) => {
         const lines = cleanData.split(/\r?\n/);
         return lines;
     } catch(e) {
-        console.error(`ERROR: Reading '${absoluteFilePath}' failed!`);
+        console.error(`ERROR: Reading '${absoluteFilePath}' failed!`, e);
         return [];
     }
 };
@@ -57,7 +58,13 @@ const buildCSV = (listOfFiles) => {
                 return outputLine(lineMeta);
             }
         });
-        console.warn(fileMeta);
+        const meta = Object.entries(fileMeta).map(e => {
+            if (e[0] === 'header') {
+                return Object.entries(e[1]).map(e => `'${e[0]}': '${e[1]}'`);
+            }
+            return `'${e[0]}': '${e[1]}'`;
+        }).flat().join('\n');
+        console.warn(meta);
     });
     console.warn(`Done!`);
 };
@@ -81,6 +88,8 @@ const printHelp = () => {
 if (process.argv.length < 3 || process.argv[2] === '/?' || process.argv[2] === '--help') {
     printHelp();
 } else {
-    const fileNames = process.argv.slice(2).map((p) => path.resolve(p));
+    const fileNames = process.argv.slice(2).map((p) => globSync(p, {
+        windowsPathsNoEscape: true
+    })).flat();
     buildCSV(fileNames);
 }

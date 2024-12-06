@@ -26,7 +26,7 @@ seasoned C:\my_salt_files\*.slt > output.csv
 ```
 
 ## How to Change Included Columns
-Everything is driven by the `column-spec.js` file in the repository. The spec is an array where each entry will be a column in the output CSV. Each entry in the array specifies two things: 1) the final column name and 2) where the value comes from. The column name is self-explanitory so I will take a bit of time to explain the way you can specify the source of the data.
+Everything is driven by the `column-spec.yaml` file in the repository. Each line in the file specifies two things: 1) the final column name and 2) where the value comes from. The column name is self-explanitory so I will take a bit of time to explain the way you can specify the source of the data.
 
 There are 3 main sources of data but they are specified in very similar ways:
 1) The file name itself

@@ -11,5 +11,9 @@
   "type": "module",
   "author": "Jon-Carlos Rivera <jon.carlos.rivera@gmail.com>",
   "license": "ISC",
-  "description": "Add a bit of seasoning to your SALT files! Converts a one or more of SALT files into a single CSV with a row for each utterance where the columns count the number times a code appears in each utterance."
+  "description": "Add a bit of seasoning to your SALT files! Converts a one or more of SALT files into a single CSV with a row for each utterance where the columns count the number times a code appears in each utterance.",
+  "dependencies": {
+    "glob": "^11.0.0",
+    "js-yaml": "^4.1.0"
+  }
 }

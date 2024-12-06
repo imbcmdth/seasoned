@@ -1,4 +1,13 @@
-import columnSpec from './column-spec.js';
+//import columnSpec from './column-spec.js';
+import yaml from 'js-yaml';
+import path from 'path';
+import fs from 'fs';
+
+const columnSpecFilename = path.resolve(path.join(import.meta.dirname, 'column-spec.yaml'));
+const columnSpecText = fs.readFileSync(columnSpecFilename, 'utf8');
+const columnSpec = Object.entries(yaml.load(columnSpecText));
+
+console.log('>>', columnSpec);
 
 export const outputHeader = () => {
     const columns = columnSpec.slice(0);
