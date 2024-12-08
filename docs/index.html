@@ -148,7 +148,7 @@
         // });
 
         // Process utterances
-        this.utterances = lines.filter(isChildLine).map(line => new Utterance(line));
+        this.utterances = lines.filter(isSpeakerLine).map(line => new Utterance(line));
         this.loaded = true;
       }
 
@@ -158,7 +158,7 @@
         const dedupedCodes = Array.from(new Set(allCodes));
         const saltHeaders = Object.keys(this.saltHeaders).sort();
 
-        return ['Utterance Number', ...saltHeaders, ...dedupedCodes];
+        return ['Utterance Number', 'Speaker', 'Raw Utterance', ...saltHeaders, ...dedupedCodes];
       }
 
       async getData(headers) {
@@ -174,6 +174,12 @@
             if (header === 'Utterance Number') {
               return index;
             }
+            if (header === 'Raw Utterance') {
+              return utterance.rawLine;
+            }
+            if (header === 'Speaker') {
+              return utterance.speaker;
+            }
             if (isCode(header)) {
               return 0;
             }
@@ -188,6 +194,7 @@
     class Utterance {
       constructor(rawLine) {
         this.rawLine = rawLine;
+        this.speaker = rawLine.split(' ')[0].toUpperCase();
         this.isHeader = false;
         this.codes = {};
         this.countCodes();
@@ -210,9 +217,10 @@
         });
       }
     }
-
+    const not = (e) => (...args) => !e(...args);
     const isChildLine = (line) => line.toLowerCase().trim().startsWith('c ');
-    const isHeaderLine = (line) => line.toLowerCase().trim().startsWith('+ ');
+    const isSpeakerLine = (line) => /^[a-z] /i.test(line);
+    const isHeaderLine = (line) => /^[$+\-\u202f] /i.test(line);
     const isCode = (line) => line.toLowerCase().trim().startsWith('[') && line.toLowerCase().trim().endsWith(']');
     const getLinesFromData = (data) => {
       // Replace any "Narrow No-Break Space" characters with a regular space
@@ -290,10 +298,14 @@
       saveCSV.disabled = false;
 
       const data = (await sheet.getData()).flat();
-      const columns = headers.map(header => {
+
+      const columnSizes = data.reduce((arr, row) => row.map((col, i) => Math.max(col.length ?? 2, (arr?.[i]) ?? 0)), []);
+
+      const columns = headers.map((header, i) => {
         return {
           title: header,
-          type: isCode(header) ? 'numeric' : 'text'
+          type: isCode(header) ? 'numeric' : 'text',
+          width: header.startsWith('File Name') ? Math.max(80, columnSizes[i] * 10) : Math.max(80, columnSizes[i] * 6.5)
         };
       });
 
