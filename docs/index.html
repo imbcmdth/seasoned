@@ -119,7 +119,7 @@
         this.file = file;
         const ucFileName = file.name.toUpperCase();
         const fileNameNoExtension = ucFileName.split('.')[0];
-        const parts = fileNameNoExtension.split(/[_- ]+/) ?? [];
+        const parts = fileNameNoExtension.split(/[_-\s]+/) ?? [];
         this.fileName = file.name;
         this.saltHeaders = {
           'File Name': file.name
